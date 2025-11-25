@@ -22,10 +22,4 @@
         app:layout_constraintStart_toEndOf="@+id/marsImageView"
         app:layout_constraintTop_toTopOf="@+id/marsImageView" />
 
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1px"
-        android:background="#000"
-        app:layout_constraintBottom_toBottomOf="@+id/marsImageView"
-        app:layout_constraintStart_toStartOf="parent" />
 </androidx.constraintlayout.widget.ConstraintLayout>
