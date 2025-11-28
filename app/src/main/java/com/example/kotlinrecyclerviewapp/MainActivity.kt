@@ -1,6 +1,7 @@
 package com.example.kotlinrecyclerviewapp
 
 import android.annotation.SuppressLint
+import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -13,6 +14,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.DividerItemDecoration
+import androidx.recyclerview.widget.ItemTouchHelper
+import androidx.recyclerview.widget.ItemTouchHelper.Callback.makeMovementFlags
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.kotlinrecyclerviewapp.databinding.ActivityMainBinding
@@ -65,6 +68,10 @@ class MainActivity : AppCompatActivity() {
         )
 
         binding.recyclerView.adapter = adapter
+        ItemTouchHelper(ItemTouchHelperCallback(adapter))
+            .attachToRecyclerView(binding.recyclerView)
+
+
         binding.recyclerActivityFAB.setOnClickListener {
             adapter.appendItem()
             binding.recyclerView.smoothScrollToPosition(adapter.itemCount - 1)
@@ -78,7 +85,7 @@ class RecyclerActivityAdapter(
     private var onListItemClickListener: OnListItemClickListener,
     private var data: MutableList<Pair<Data, Boolean>>
 ) :
-    RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+    RecyclerView.Adapter<RecyclerView.ViewHolder>(), ItemTouchHelperAdapter {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         val inflater = LayoutInflater.from(parent.context)
@@ -139,6 +146,18 @@ class RecyclerActivityAdapter(
 
     private fun generateItem() = Pair(Data("Mars", ""), false)
 
+    override fun onItemMove(fromPosition: Int, toPosition: Int) {
+        data.removeAt(fromPosition).apply {
+            data.add(if (toPosition > fromPosition) toPosition - 1 else toPosition, this)
+        }
+        notifyItemMoved(fromPosition, toPosition)
+    }
+
+    override fun onItemDismiss(position: Int) {
+        data.removeAt(position)
+        notifyItemRemoved(position)
+    }
+
 
     inner class EarthViewHolder(view: View) : RecyclerView.ViewHolder(view) {
 
@@ -152,7 +171,8 @@ class RecyclerActivityAdapter(
         }
     }
 
-    inner class MarsViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+    inner class MarsViewHolder(view: View) : RecyclerView.ViewHolder(view),
+        ItemTouchHelperViewHolder {
 
         fun bind(dataItem: Pair<Data, Boolean>) {
             itemView.findViewById<ImageView>(R.id.marsImageView)
@@ -166,12 +186,12 @@ class RecyclerActivityAdapter(
         private fun toggleText() {
             data[layoutPosition] = data[layoutPosition].let {
                 it.first to !it.second
-        }
+            }
             //FIXME отладить появление/исчезновение текста
             if (data[layoutPosition].second) {
                 itemView.findViewById<TextView>(R.id.marsDescriptionTextView).visibility =
                     View.VISIBLE
-            } else{
+            } else {
                 itemView.findViewById<TextView>(R.id.marsDescriptionTextView).visibility =
                     View.INVISIBLE
             }
@@ -196,6 +216,13 @@ class RecyclerActivityAdapter(
             }
         }
 
+        override fun onItemSelected() {
+            itemView.setBackgroundColor(Color.LTGRAY)
+        }
+
+        override fun onItemClear() {
+            itemView.setBackgroundColor(0)
+        }
     }
 
     inner class HeaderViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -213,5 +240,71 @@ class RecyclerActivityAdapter(
         private const val TYPE_EARTH = 0
         private const val TYPE_MARS = 1
         private const val TYPE_HEADER = 2
+    }
+}
+
+interface ItemTouchHelperAdapter {
+    fun onItemMove(fromPosition: Int, toPosition: Int)
+
+    fun onItemDismiss(position: Int)
+}
+
+interface ItemTouchHelperViewHolder {
+
+    fun onItemSelected()
+
+    fun onItemClear()
+}
+
+class ItemTouchHelperCallback(private val adapter: RecyclerActivityAdapter) :
+    ItemTouchHelper.Callback() {
+
+    override fun isLongPressDragEnabled(): Boolean {
+        return true
+    }
+
+    override fun isItemViewSwipeEnabled(): Boolean {
+        return true
+    }
+
+    override fun getMovementFlags(
+        recyclerView: RecyclerView,
+        viewHolder: RecyclerView.ViewHolder
+    ): Int {
+        val dragFlags = ItemTouchHelper.UP or ItemTouchHelper.DOWN
+        val swipeFlags = ItemTouchHelper.START or ItemTouchHelper.END
+        return makeMovementFlags(
+            dragFlags,
+            swipeFlags
+        )
+    }
+
+    override fun onMove(
+        recyclerView: RecyclerView,
+        source: RecyclerView.ViewHolder,
+        target: RecyclerView.ViewHolder
+    ): Boolean {
+        adapter.onItemMove(source.adapterPosition, target.adapterPosition)
+        return true
+    }
+
+    override fun onSwiped(viewHolder: RecyclerView.ViewHolder, i: Int) {
+        adapter.onItemDismiss(viewHolder.adapterPosition)
+    }
+
+    override fun onSelectedChanged(viewHolder: RecyclerView.ViewHolder?, actionState: Int) {
+        if (actionState != ItemTouchHelper.ACTION_STATE_IDLE) {
+            val itemViewHolder =
+                viewHolder as ItemTouchHelperViewHolder
+            itemViewHolder.onItemSelected()
+        }
+        super.onSelectedChanged(viewHolder, actionState)
+    }
+
+    override fun clearView(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder) {
+        super.clearView(recyclerView, viewHolder)
+        val itemViewHolder =
+            viewHolder as ItemTouchHelperViewHolder
+        itemViewHolder.onItemClear()
     }
 }
