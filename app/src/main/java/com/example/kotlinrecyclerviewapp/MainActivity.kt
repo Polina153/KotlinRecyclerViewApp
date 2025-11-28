@@ -193,7 +193,7 @@ class RecyclerActivityAdapter(
                     View.VISIBLE
             } else {
                 itemView.findViewById<TextView>(R.id.marsDescriptionTextView).visibility =
-                    View.INVISIBLE
+                    View.GONE
             }
             notifyItemChanged(layoutPosition)
         }
@@ -284,12 +284,12 @@ class ItemTouchHelperCallback(private val adapter: RecyclerActivityAdapter) :
         source: RecyclerView.ViewHolder,
         target: RecyclerView.ViewHolder
     ): Boolean {
-        adapter.onItemMove(source.adapterPosition, target.adapterPosition)
+        adapter.onItemMove(source.getBindingAdapterPosition(), target.getBindingAdapterPosition())
         return true
     }
 
     override fun onSwiped(viewHolder: RecyclerView.ViewHolder, i: Int) {
-        adapter.onItemDismiss(viewHolder.adapterPosition)
+        adapter.onItemDismiss(viewHolder.getBindingAdapterPosition())
     }
 
     override fun onSelectedChanged(viewHolder: RecyclerView.ViewHolder?, actionState: Int) {
