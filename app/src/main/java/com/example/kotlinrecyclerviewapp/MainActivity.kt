@@ -1,5 +1,6 @@
 package com.example.kotlinrecyclerviewapp
 
+import android.annotation.SuppressLint
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -46,27 +47,35 @@ class MainActivity : AppCompatActivity() {
 
         data.add(0, Data("Header"))
 
-        binding.recyclerView.adapter = RecyclerActivityAdapter(
+        val adapter = RecyclerActivityAdapter(
             object : RecyclerActivityAdapter.OnListItemClickListener {
                 override fun onItemClick(data: Data) {
-                    Toast.makeText(this@MainActivity, data.someText, Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@MainActivity, data.someText, Toast.LENGTH_LONG).show()
                 }
             },
             data
         )
+
         binding.recyclerView.addItemDecoration(
             DividerItemDecoration(
                 this,
                 LinearLayoutManager.VERTICAL
             )
         )
+
+        binding.recyclerView.adapter = adapter
+        binding.recyclerActivityFAB.setOnClickListener {
+            adapter.appendItem()
+            binding.recyclerView.smoothScrollToPosition(adapter.itemCount - 1)
+        }
+
     }
 }
 
 
 class RecyclerActivityAdapter(
     private var onListItemClickListener: OnListItemClickListener,
-    private var data: List<Data>
+    private var data: MutableList<Data>
 ) :
     RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
@@ -95,10 +104,12 @@ class RecyclerActivityAdapter(
                 holder as EarthViewHolder
                 holder.bind(data[position])
             }
+
             TYPE_MARS -> {
                 holder as MarsViewHolder
                 holder.bind(data[position])
             }
+
             else -> {
                 holder as HeaderViewHolder
                 holder.bind(data[position])
@@ -117,6 +128,16 @@ class RecyclerActivityAdapter(
             else -> TYPE_EARTH
         }
     }
+
+    @SuppressLint("NotifyDataSetChanged")
+    fun appendItem() {
+        data.add(generateItem())
+        //notifyDataSetChanged()
+        notifyItemInserted(itemCount - 1)
+    }
+
+    private fun generateItem() = Data("Mars", "")
+
 
     inner class EarthViewHolder(view: View) : RecyclerView.ViewHolder(view) {
 
