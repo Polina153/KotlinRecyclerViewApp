@@ -16,6 +16,7 @@ import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.kotlinrecyclerviewapp.databinding.ActivityMainBinding
+import kotlin.io.path.Path
 
 class MainActivity : AppCompatActivity() {
 
@@ -36,18 +37,18 @@ class MainActivity : AppCompatActivity() {
             insets
         }
         val data = arrayListOf(
-            Data("Earth"),
-            Data("Earth"),
-            Data("Mars", ""),
-            Data("Earth"),
-            Data("Earth"),
-            Data("Earth"),
-            Data("Mars", null)
+            Pair(Data("Earth"), false),
+            Pair(Data("Earth"), false),
+            Pair(Data("Mars", ""), false),
+            Pair(Data("Earth"), false),
+            Pair(Data("Earth"), false),
+            Pair(Data("Earth"), false),
+            Pair(Data("Mars", null), false)
         )
 
-        data.add(0, Data("Header"))
+        data.add(0, Pair(Data("Header"), false))
 
-        val adapter = RecyclerActivityAdapter(
+        adapter = RecyclerActivityAdapter(
             object : RecyclerActivityAdapter.OnListItemClickListener {
                 override fun onItemClick(data: Data) {
                     Toast.makeText(this@MainActivity, data.someText, Toast.LENGTH_LONG).show()
@@ -75,7 +76,7 @@ class MainActivity : AppCompatActivity() {
 
 class RecyclerActivityAdapter(
     private var onListItemClickListener: OnListItemClickListener,
-    private var data: MutableList<Data>
+    private var data: MutableList<Pair<Data, Boolean>>
 ) :
     RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
@@ -124,7 +125,7 @@ class RecyclerActivityAdapter(
     override fun getItemViewType(position: Int): Int {
         return when {
             position == 0 -> TYPE_HEADER
-            data[position].someDescription.isNullOrBlank() -> TYPE_MARS
+            data[position].first.someDescription.isNullOrBlank() -> TYPE_MARS
             else -> TYPE_EARTH
         }
     }
@@ -136,28 +137,45 @@ class RecyclerActivityAdapter(
         notifyItemInserted(itemCount - 1)
     }
 
-    private fun generateItem() = Data("Mars", "")
+    private fun generateItem() = Pair(Data("Mars", ""), false)
 
 
     inner class EarthViewHolder(view: View) : RecyclerView.ViewHolder(view) {
 
-        fun bind(data: Data) {
+        fun bind(dataItem: Pair<Data, Boolean>) {
             if (layoutPosition != RecyclerView.NO_POSITION) {
                 itemView.findViewById<TextView>(R.id.descriptionTextView).text =
-                    data.someDescription
+                    dataItem.first.someDescription
                 itemView.findViewById<ImageView>(R.id.wikiImageView)
-                    .setOnClickListener { onListItemClickListener.onItemClick(data) }
+                    .setOnClickListener { onListItemClickListener.onItemClick(dataItem.first) }
             }
         }
     }
 
     inner class MarsViewHolder(view: View) : RecyclerView.ViewHolder(view) {
 
-        fun bind(data: Data) {
+        fun bind(dataItem: Pair<Data, Boolean>) {
             itemView.findViewById<ImageView>(R.id.marsImageView)
-                .setOnClickListener { onListItemClickListener.onItemClick(data) }
+                .setOnClickListener { onListItemClickListener.onItemClick(dataItem.first) }
             itemView.findViewById<ImageView>(R.id.moveItemDown).setOnClickListener { moveDown() }
             itemView.findViewById<ImageView>(R.id.moveItemUp).setOnClickListener { moveUp() }
+            itemView.findViewById<TextView>(R.id.marsTextView)
+                .setOnClickListener { toggleText() }
+        }
+
+        private fun toggleText() {
+            data[layoutPosition] = data[layoutPosition].let {
+                it.first to !it.second
+        }
+            //FIXME отладить появление/исчезновение текста
+            if (data[layoutPosition].second) {
+                itemView.findViewById<TextView>(R.id.marsDescriptionTextView).visibility =
+                    View.VISIBLE
+            } else{
+                itemView.findViewById<TextView>(R.id.marsDescriptionTextView).visibility =
+                    View.INVISIBLE
+            }
+            notifyItemChanged(layoutPosition)
         }
 
         private fun moveUp() {
@@ -182,8 +200,8 @@ class RecyclerActivityAdapter(
 
     inner class HeaderViewHolder(view: View) : RecyclerView.ViewHolder(view) {
 
-        fun bind(data: Data) {
-            itemView.setOnClickListener { onListItemClickListener.onItemClick(data) }
+        fun bind(dataItem: Pair<Data, Boolean>) {
+            itemView.setOnClickListener { onListItemClickListener.onItemClick(dataItem.first) }
         }
     }
 
