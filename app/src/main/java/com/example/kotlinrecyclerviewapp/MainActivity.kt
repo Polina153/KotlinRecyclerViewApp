@@ -3,6 +3,7 @@ package com.example.kotlinrecyclerviewapp
 import android.annotation.SuppressLint
 import android.graphics.Color
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -10,6 +11,7 @@ import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -21,15 +23,15 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.kotlinrecyclerviewapp.databinding.ActivityMainBinding
 import kotlin.io.path.Path
 
-class MainActivity : AppCompatActivity(), MainContract.View {
+class MainActivity : AppCompatActivity() {
 
     private var _binding: ActivityMainBinding? = null
     private val binding get() = _binding!!
 
-    private lateinit var adapter: RecyclerActivityAdapter
-    private lateinit var presenter: MainPresenterImpl
+    private lateinit var adapter: MVVMRecyclerActivityAdapter
+    private val viewModel: MainViewModel by viewModels()
 
-    private val dataList = mutableListOf<Pair<Data, Boolean>>()
+    private val dataList = mutableListOf<Pair<RecyclerData, Boolean>>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,21 +45,19 @@ class MainActivity : AppCompatActivity(), MainContract.View {
             insets
         }
 
-        presenter = MainPresenterImpl(this)
-
         setupRecyclerView()
         setupFab()
-
-        presenter.onViewCreated()
+        observeViewModel()
     }
 
     private fun setupRecyclerView() {
-        adapter = RecyclerActivityAdapter(presenter, dataList)
+        adapter = MVVMRecyclerActivityAdapter(viewModel, dataList)
 
         binding.recyclerView.apply {
-            addItemDecoration(DividerItemDecoration(this@MainActivity, LinearLayoutManager.VERTICAL))
-            this.adapter = adapter
             layoutManager = LinearLayoutManager(this@MainActivity)
+            addItemDecoration(DividerItemDecoration(this@MainActivity, LinearLayoutManager.VERTICAL))
+            adapter = this@MainActivity.adapter
+
         }
 
         ItemTouchHelper(ItemTouchHelperCallback(adapter)).attachToRecyclerView(binding.recyclerView)
@@ -65,23 +65,21 @@ class MainActivity : AppCompatActivity(), MainContract.View {
 
     private fun setupFab() {
         binding.recyclerActivityFAB.setOnClickListener {
-            presenter.onFabClick()
+            viewModel.onFabClick()
         }
     }
 
-    // Реализация MainContract.View
-    override fun showData(data: List<Pair<Data, Boolean>>) {
-        dataList.clear()
-        dataList.addAll(data)
-        adapter.notifyDataSetChanged()
-    }
+    private fun observeViewModel() {
+        // Наблюдаем за изменениями данных
+        viewModel.dataList.observe(this) { data ->
+            adapter.updateData(data)  // Передаем данные в adapter
+            Log.d("MainActivity", "Данные обновлены: ${data.size} элементов")
+        }
 
-    override fun showToast(message: String) {
-        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
-    }
-
-    override fun scrollToBottom() {
-        binding.recyclerView.smoothScrollToPosition(adapter.itemCount - 1)
+        // Наблюдаем за сообщениями Toast
+        viewModel.toastMessage.observe(this) { message ->
+            Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+        }
     }
 
     override fun onDestroy() {
@@ -103,7 +101,7 @@ interface ItemTouchHelperViewHolder {
     fun onItemClear()
 }
 
-class ItemTouchHelperCallback(private val adapter: RecyclerActivityAdapter) :
+class ItemTouchHelperCallback(private val adapter: MVVMRecyclerActivityAdapter) :
     ItemTouchHelper.Callback() {
 
     override fun isLongPressDragEnabled(): Boolean {
